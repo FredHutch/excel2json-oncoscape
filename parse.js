@@ -21,10 +21,12 @@ var csv2json = function(csvFilePath){
     });
 }
 // Async / await usage
-var data;
+var data = [];
 async.each(csvFiles, (file) =>{
     console.log(file);
-    var result = csv2json(file);
+    csv2json(file).then(d=>{
+        data.push(d);
+    });
 }, err => {
     if (err) console.error(err.message);
 });
