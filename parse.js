@@ -21,30 +21,6 @@ var csv2json = function(csvFilePath){
         });
     });
 }
-// Async / await usage
-var data = [];
-async.each(csvFiles, (file) =>{
-    console.log(file);
-    var obj = {};
-    var res = {};
-    var type = file.split('-')[0];
-    csv2json(file).then(d=>{
-        var ids = Object.keys(d[0]);
-        ids = ids.splice(0, 1);
-        res.ids = ids;
-        var genes = data.map(d=>d['Gene Symbol']);
-        res.genes = genes;
-        var values = d.map(dd => _.values(dd));
-        res.values = values;
-        obj.res = res;
-        obj.type = type;
-        obj.name = file;
-    });
-}, err => {
-    if (err) console.error(err.message);
-});
-
-
 
 var serialization = function(jsonObj, filename) {
     var obj = {};
@@ -74,3 +50,21 @@ var serialization = function(jsonObj, filename) {
     }
     return obj;
 }
+
+// Async / await usage
+var data = [];
+var jsonObj;
+var filename;
+async.each(csvFiles, (file) =>{
+    console.log(file);
+    csv2json(file).then(d=>{
+        jsonObj = d;
+        filename = file;
+        data.push(serialization(d, file));
+    });
+}, err => {
+    if (err) console.error(err.message);
+});
+
+
+
