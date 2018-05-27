@@ -120,11 +120,14 @@ var serialization = function(jsonObj, file) {
         res.value = value;
         obj.res = res;
     } else if (type === 'EVENT') {
+        var map = {};
         file = file.replace('.csv', '');
         var category = file.split('-')[1];
+        map['category'] = category;
         var subCategory;
         if (file.split('-').length > 2) {
             subCategory = file.split('-')[2];
+            map['subCategory'] = subCategory;
         };
 
         var keys_uppercase = Object.keys(jsonObj[0]).map(k=>k.toUpperCase());
@@ -135,15 +138,43 @@ var serialization = function(jsonObj, file) {
         var reservedKeyLocations = [patientIDLocation, startDateLocation, endDateLocation];
         var nonreservedKeys = keys.filter((h, i)=>reservedKeyLocations.indexOf(i) === -1);
         
-
-
+        var value = jsonObj.map(d=>{
+            var arr = [];
+            arr[0] = d[keys[patientIDLocation]];
+            arr[1] = parseInt(d[keys[startDateLocation]]);
+            arr[2] = parseInt(d[keys[endDateLocation]]);
+            var o = {};
+            nonreservedKeys.forEach(h=>{
+                if( h.match(regex_n) !== null) {
+                    o[h] = parseFloat(d[h]);
+                } else {
+                    o[h] = d[h];
+                } 
+            });
+            arr[3] = o;
+            return arr;
+        });
         res.map = map;
         res.value = value;
         obj.res = res;
     } else if (type === 'GENESETS') {
 
     } else if (type === 'MUTATION') {
-
+        var keys_uppercase = Object.keys(jsonObj[0]).map(k=>k.toUpperCase());
+        var keys = Object.keys(jsonObj[0]);
+        var ids = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('SAMPLEID')]]));
+        var genes = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('GENE')]]));
+        var mutTypes = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('TYPE')]]));
+        var values = jsonObj.map((d)=>{
+            return(ids.indexOf(d[keys[keys_uppercase.indexOf('SAMPLEID')]]) + '-' +
+                   genes.indexOf(d[keys[keys_uppercase.indexOf('GENE')]]) + '-' +
+                   mutTypes.indexOf(d[keys[keys_uppercase.indexOf('TYPE')]]));
+        });
+        res.ids = ids;
+        res.genes = genes;
+        res.mutationTypes = mutTypes;
+        res.values = values;
+        obj.res = res;
     }
     return obj;
 }
