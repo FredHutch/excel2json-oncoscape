@@ -2,7 +2,8 @@
 // node --max-old-space-size=3000 trying to mimic lambda specification
 
 const csv=require('csvtojson')
-var async = require("async");
+const async = require('async');
+const jsonfile = require('jsonfile');
 const testFolder = '.';
 const fs = require('fs');
 const _ = require('lodash');
@@ -177,21 +178,50 @@ var serialization = function(jsonObj, file) {
         obj.res = res;
     }
     return obj;
-}
-
+};
 // Async / await usage
 var data = [];
+var events = [];
 var jsonObj;
-async.each(csvFiles, (file) =>{
+async.each(csvFiles, (file) => {
     console.log(file);
-    csv2json(file).then(d=>{
+    csv2json(file).then(d => {
         jsonObj = d;
         console.log('Done');
-        // data.push(serialization(d, file));
+        // var result = serialization(d, file);
+        if (file.split('-')[0].toUpperCase() === 'EVENT') {
+            var result = serialization(d, file);
+            events.push(result);
+        } else {
+            var jsonFileName = file.replace('.csv', '.json');
+            console.log('jsonFileName: ', jsonFileName);
+            // jsonfile.writeFile(jsonFileName, result, function(err) {
+            //     console.error(err);
+            // });
+        }
     });
 }, err => {
-    if (err) console.error(err.message);
+    if (err) {
+        console.error(err.message);
+    } else {
+        var obj = {};
+        obj.type = 'EVENT';
+        obj.name = 'EVENT';
+        // var o = {};
+        // var m = {};
+        // var v = [];
+        // events.forEach(e=> {
+        //     m[e.res.map.subCategory] = e.res.map.category;
+        //     v = v.concat(e.res.value);
+        // });
+        // var type_keys = Object.keys(m);
+        // v.forEach(elem => elem[1] = type_keys.indexOf(elem[1]));
+        // o.map = m;
+        // o.value = v;
+        // obj.res = o;
+        // var jsonFileName = 'events.json';
+        // jsonfile.writeFile(jsonFileName, obj, function(err) {
+        //     console.error(err);
+        // });
+    } 
 });
-
-
-
