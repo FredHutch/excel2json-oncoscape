@@ -26,11 +26,16 @@ var serialization = function(jsonObj, filename) {
     var obj = {};
     var res = {};
     var type = filename.split('-')[0].toUpperCase();
+    console.log('type is: ', type);
     if (type === 'MATRIX') {
         var ids = Object.keys(jsonObj[0]);
-        ids = ids.splice(0, 1);
-        var genes = data.map(jsonObj => jsonObj['Gene Symbol']);
-        var values = jsonObj.map(dd => _.values(dd));
+        ids.splice(0, 1);
+        var genes = jsonObj.map(j => j['Gene Symbol']);
+        var values = jsonObj.map(dd => {
+            var val = _.values(dd);
+            val.splice(1, 0);
+            return val;
+        });
         res.ids = ids;
         res.genes = genes;
         res.values = values;
@@ -54,13 +59,12 @@ var serialization = function(jsonObj, filename) {
 // Async / await usage
 var data = [];
 var jsonObj;
-var filename;
 async.each(csvFiles, (file) =>{
     console.log(file);
     csv2json(file).then(d=>{
         jsonObj = d;
-        filename = file;
-        data.push(serialization(d, file));
+        console.log('Done');
+        // data.push(serialization(d, file));
     });
 }, err => {
     if (err) console.error(err.message);
