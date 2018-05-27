@@ -22,11 +22,17 @@ var csv2json = function(csvFilePath){
     });
 }
 
-var serialization = function(jsonObj, filename) {
+var serialization = function(jsonObj, file) {
     var obj = {};
     var res = {};
-    var type = filename.split('-')[0].toUpperCase();
+    var type = file.split('-')[0].toUpperCase();
+    obj.type = type;
+    obj.name = file;
     console.log('type is: ', type);
+    var regex_n = new RegExp('\-N');
+    var regex_b = new RegExp('\-B');
+    var regex_s = new RegExp('\-S');
+    var regex_d = new RegExp('\-D');
     if (type === 'MATRIX') {
         var ids = Object.keys(jsonObj[0]);
         ids.splice(0, 1);
@@ -40,12 +46,79 @@ var serialization = function(jsonObj, filename) {
         res.genes = genes;
         res.values = values;
         obj.res = res;
-        obj.type = type;
-        obj.name = filename;
     } else if (type === 'PATIENT') {
-
+        var keys_uppercase = Object.keys(jsonObj[0]).map(k=>k.toUpperCase());
+        var keys = Object.keys(jsonObj[0]);
+        var ids = jsonObj.map(j=>j[keys[keys_uppercase.indexOf('PATIENTID')]]);
+        var fields = {};
+        keys.splice(keys_uppercase.indexOf('PATIENTID'), 1);
+        keys.forEach(k => {
+            if (k.match(regex_n) !== null) {
+                var col_values = jsonObj.map(j=>parseFloat(j[k]));
+                v = {
+                    'min' : _.min(col_values),
+                    'max' : _.max(col_values)
+                }
+            } else { //default type is string
+                v = _.uniq(jsonObj.map(j=>j[k]));
+                if(v.indexOf(undefined) > -1) {
+                    v.splice(v.indexOf(undefined), 1);
+                }
+            }
+            fields[k] = v;
+        });
+        var value = jsonObj.map(j => {
+            var arr = [];
+            keys.forEach(k => {
+                if (k.match(regex_n) !== null) {
+                    arr.push(parseFloat(j[k]));
+                } else {
+                    arr.push(fields[k].indexOf(j[k]));
+                }
+            });
+            return arr;
+        });
+        res.ids = ids;
+        res.fields = fields;
+        res.value = value;
+        obj.res = res;
     } else if (type === 'SAMPLE') {
-
+        var keys_uppercase = Object.keys(jsonObj[0]).map(k=>k.toUpperCase());
+        var keys = Object.keys(jsonObj[0]);
+        var ids = jsonObj.map(j=>j[keys[keys_uppercase.indexOf('SAMPLEID')]]);
+        var fields = {};
+        keys.splice(keys_uppercase.indexOf('SAMPLEID'), 1);
+        keys.splice(keys_uppercase.indexOf('PATIENTID'), 1);
+        keys.forEach(k => {
+            if (k.match(regex_n) !== null) {
+                var col_values = jsonObj.map(j=>parseFloat(j[k]));
+                v = {
+                    'min' : _.min(col_values),
+                    'max' : _.max(col_values)
+                }
+            } else { //default type is string
+                v = _.uniq(jsonObj.map(j=>j[k]));
+                if(v.indexOf(undefined) > -1) {
+                    v.splice(v.indexOf(undefined), 1);
+                }
+            }
+            fields[k] = v;
+        });
+        var value = jsonObj.map(j => {
+            var arr = [];
+            keys.forEach(k => {
+                if (k.match(regex_n) !== null) {
+                    arr.push(parseFloat(j[k]));
+                } else {
+                    arr.push(fields[k].indexOf(j[k]));
+                }
+            });
+            return arr;
+        });
+        res.ids = ids;
+        res.fields = fields;
+        res.value = value;
+        obj.res = res;
     } else if (type === 'EVENT') {
 
     } else if (type === 'GENESETS') {
