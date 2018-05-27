@@ -120,7 +120,26 @@ var serialization = function(jsonObj, file) {
         res.value = value;
         obj.res = res;
     } else if (type === 'EVENT') {
+        file = file.replace('.csv', '');
+        var category = file.split('-')[1];
+        var subCategory;
+        if (file.split('-').length > 2) {
+            subCategory = file.split('-')[2];
+        };
 
+        var keys_uppercase = Object.keys(jsonObj[0]).map(k=>k.toUpperCase());
+        var keys = Object.keys(jsonObj[0]);
+        var patientIDLocation = keys_uppercase.indexOf('PATIENTID');
+        var startDateLocation = keys_uppercase.indexOf('START');
+        var endDateLocation = keys_uppercase.indexOf('END');
+        var reservedKeyLocations = [patientIDLocation, startDateLocation, endDateLocation];
+        var nonreservedKeys = keys.filter((h, i)=>reservedKeyLocations.indexOf(i) === -1);
+        
+
+
+        res.map = map;
+        res.value = value;
+        obj.res = res;
     } else if (type === 'GENESETS') {
 
     } else if (type === 'MUTATION') {
