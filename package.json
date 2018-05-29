@@ -1,0 +1,31 @@
+{
+  "name": "large-data",
+  "version": "1.0.0",
+  "description": "``` easy_install xlsx2csv // sh xlsx2csv.sh python3 parser.py ```",
+  "main": "parse.js",
+  "dependencies": {
+    "async": "^2.6.1",
+    "csv-parse": "^2.4.0",
+    "csvtojson": "^2.0.3",
+    "excel-stream": "^1.1.1",
+    "http": "^0.0.0",
+    "jsonfile": "^4.0.0",
+    "lodash": "^4.17.10",
+    "node-async-loop": "^1.2.2",
+    "xlsx-stream-reader": "^0.9.11"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/FredHutch/excel2json-oncoscape.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/FredHutch/excel2json-oncoscape/issues"
+  },
+  "homepage": "https://github.com/FredHutch/excel2json-oncoscape#readme"
+}
