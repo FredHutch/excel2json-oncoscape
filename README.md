@@ -7,3 +7,6 @@ python3 parser.py
 ```
 
 ### # excel2json-oncoscape
+```
+node --max-old-space-size=10000 parse.js
+```
