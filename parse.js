@@ -12,63 +12,8 @@ var csvFiles;
 var data = [];
 var events = [];
 var jsonObj;
-console.log('test1');
 console.log(csvFiles);
-fs.readdir(testFolder, (err, files) => {
-    csvFiles = files.filter(f => f.indexOf('.csv') > 0);
-    async.each(csvFiles,
-        function(file, callback){
-          console.log('file', file);
-          csv2json(file).then(d => {
-                jsonObj = d;
-                console.log('Done');
-                file = file.replace('.csv', '');
-                var result = serialization(jsonObj, file);
-                if (file.split('-')[0].toUpperCase() === 'EVENT') {
-                    // var result = serialization(d, file);
-                    events.push(result);
-                } else {
-                    console.log('*****', file);
-                    var jsonFileName = file + '.json';
-                    console.log('jsonFileName: ', jsonFileName);
-                    jsonfile.writeFile(jsonFileName, result, function(err) {
-                        console.error(err);
-                    });
-                }
-                callback();
-            });
-        },
-        function(err){
-            console.log('am I here?????????');
-            if (err) {
-                console.log('test');
-                console.error(err.message);
-            } else {
-                var obj = {};
-                obj.type = 'EVENT';
-                obj.name = 'EVENT';
-                var o = {};
-                var m = {};
-                var v = [];
-                events.forEach(e=> {
-                    m[e.res.map.subCategory] = e.res.map.category;
-                    v = v.concat(e.res.value);
-                });
-                var type_keys = Object.keys(m);
-                v.forEach(elem => elem[1] = type_keys.indexOf(elem[1]));
-                o.map = m;
-                o.value = v;
-                obj.res = o;
-                var jsonFileName = 'events.json';
-                jsonfile.writeFile(jsonFileName, obj, function(err) {
-                    console.error(err);
-                });
-            } 
-        }
-      );
-})
-
-var csv2json = function(csvFilePath){
+var csv2json = function(csvFilePath) {
     return new Promise((resolve, reject) => { 
         csv()
         .fromFile(csvFilePath)
@@ -139,7 +84,6 @@ var serialization = function(jsonObj, file) {
         res.fields = fields;
         res.value = value;
         obj.res = res;
-        console.log(obj);
     } else if (type === 'SAMPLE') {
         var keys_uppercase = Object.keys(jsonObj[0]).map(k=>k.toUpperCase());
         var keys = Object.keys(jsonObj[0]);
@@ -177,11 +121,8 @@ var serialization = function(jsonObj, file) {
         res.fields = fields;
         res.value = value;
         obj.res = res;
-        console.log(obj);
     } else if (type === 'EVENT') {
         var map = {};
-        // file = file.replace('.csv', '');
-        console.log('&&&&&&', file);
         var category = file.split('-')[1];
         map['category'] = category;
         var subCategory;
@@ -233,57 +174,60 @@ var serialization = function(jsonObj, file) {
         res.mutationTypes = mutTypes;
         res.values = values;
         obj.res = res;
-        console.log(obj);
     }
     return obj;
 };
+fs.readdir(testFolder, (err, files) => {
+    csvFiles = files.filter(f => f.indexOf('.csv') > 0);
+    async.each(csvFiles,
+        function(file, callback){
+          console.log('file', file);
+          csv2json(file).then(d => {
+                jsonObj = d;
+                console.log('Done');
+                file = file.replace('.csv', '');
+                var result = serialization(jsonObj, file);
+                if (file.split('-')[0].toUpperCase() === 'EVENT') {
+                    events.push(result);
+                } else {
+                    console.log('*****', file);
+                    var jsonFileName = file + '.json';
+                    console.log('jsonFileName: ', jsonFileName);
+                    jsonfile.writeFile(jsonFileName, result, function(err) {
+                        console.error(err);
+                    });
+                }
+                callback();
+            });
+        },
+        function(err){
+            if (err) {
+                console.error(err.message);
+            } else {
+                var obj = {};
+                obj.type = 'EVENT';
+                obj.name = 'EVENT';
+                var o = {};
+                var m = {};
+                var v = [];
+                events.forEach(e=> {
+                    m[e.res.map.subCategory] = e.res.map.category;
+                    v = v.concat(e.res.value);
+                });
+                var type_keys = Object.keys(m);
+                v.forEach(elem => elem[1] = type_keys.indexOf(elem[1]));
+                o.map = m;
+                o.value = v;
+                obj.res = o;
+                var jsonFileName = 'events.json';
+                jsonfile.writeFile(jsonFileName, obj, function(err) {
+                    console.error(err);
+                });
+            } 
+        }
+      );
+});
 
 
 
-  
 
-// asyncLoop(csvFiles, function(file, next){ 
-//     console.log(file);
-//     csv2json(file).then(d => {
-//         jsonObj = d;
-//         console.log('Done');
-//         file = file.replace('.csv', '');
-//         var result = serialization(jsonObj, file);
-//         if (file.split('-')[0].toUpperCase() === 'EVENT') {
-//             // var result = serialization(d, file);
-//             events.push(result);
-//         } else {
-//             console.log('*****', file);
-//             var jsonFileName = file + '.json';
-//             console.log('jsonFileName: ', jsonFileName);
-//             jsonfile.writeFile(jsonFileName, result, function(err) {
-//                 console.error(err);
-//             });
-//         }
-//         next();
-//     });
-// }, err => {
-//     if (err) {
-//         console.error(err.message);
-//     } else {
-//         var obj = {};
-//         obj.type = 'EVENT';
-//         obj.name = 'EVENT';
-//         var o = {};
-//         var m = {};
-//         var v = [];
-//         events.forEach(e=> {
-//             m[e.res.map.subCategory] = e.res.map.category;
-//             v = v.concat(e.res.value);
-//         });
-//         var type_keys = Object.keys(m);
-//         v.forEach(elem => elem[1] = type_keys.indexOf(elem[1]));
-//         o.map = m;
-//         o.value = v;
-//         obj.res = o;
-//         var jsonFileName = 'events.json';
-//         jsonfile.writeFile(jsonFileName, obj, function(err) {
-//             console.error(err);
-//         });
-//     } 
-// });
