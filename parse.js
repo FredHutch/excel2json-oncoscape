@@ -5,13 +5,18 @@ const csv=require('csvtojson')
 const asyncLoop = require('node-async-loop');
 const async = require("async");
 const jsonfile = require('jsonfile');
+const zlib = require('zlib');
 const testFolder = '.';
 const fs = require('fs');
 const _ = require('lodash');
+var save = require('./data_uploading_modules/DatasetSave.js');
+var serialize = require('./data_uploading_modules/DatasetSerialize.js');
+var ser
 var csvFiles;
 var data = [];
 var events = [];
 var jsonObj;
+var uploadResults = [];
 console.log(csvFiles);
 var csv2json = function(csvFilePath) {
     return new Promise((resolve, reject) => { 
@@ -184,18 +189,29 @@ fs.readdir(testFolder, (err, files) => {
           console.log('file', file);
           csv2json(file).then(d => {
                 jsonObj = d;
+                var meta = {};
                 console.log('Done');
                 file = file.replace('.csv', '');
+                // heavy compute
                 var result = serialization(jsonObj, file);
-                if (file.split('-')[0].toUpperCase() === 'EVENT') {
+                var type = file.split('-')[0].toUpperCase();
+                if (type === 'EVENT') {
                     events.push(result);
                 } else {
+                    data.push(result);
                     console.log('*****', file);
-                    var jsonFileName = file + '.json';
+                    var jsonFileName = file + '.json.gz';
                     console.log('jsonFileName: ', jsonFileName);
-                    jsonfile.writeFile(jsonFileName, result, function(err) {
-                        console.error(err);
+                    meta['name'] = file;
+                    meta['dataType'] = type;
+                    meta['file'] = jsonFileName;
+                    uploadResults.push(meta);
+                    zlib.gzip(JSON.stringify(result), level=9, function(err, result){
+                        jsonfile.writeFile(jsonFileName, result, function(err) {
+                            console.error(err);
+                        });
                     });
+                    
                 }
                 callback();
             });
@@ -205,6 +221,7 @@ fs.readdir(testFolder, (err, files) => {
                 console.error(err.message);
             } else {
                 var obj = {};
+                var meta = {};
                 obj.type = 'EVENT';
                 obj.name = 'EVENT';
                 var o = {};
@@ -219,9 +236,16 @@ fs.readdir(testFolder, (err, files) => {
                 o.map = m;
                 o.value = v;
                 obj.res = o;
-                var jsonFileName = 'events.json';
-                jsonfile.writeFile(jsonFileName, obj, function(err) {
-                    console.error(err);
+                data.push(obj);
+                var jsonFileName = 'events.json.gz';
+                meta['name'] = 'EVENT';
+                meta['dataType'] = 'EVENT';
+                meta['file'] = jsonFileName;
+                uploadResults.push(meta);
+                zlib.gzip(JSON.stringify(obj), level=9, function(err, result){
+                    jsonfile.writeFile(jsonFileName, result, function(err) {
+                        console.error(err);
+                    });
                 });
             } 
         }
@@ -229,5 +253,7 @@ fs.readdir(testFolder, (err, files) => {
 });
 
 
-
-
+var manifest = serialize.manifest(data, uploadResults);
+jsonfile.writeFile('manifest.json', manifest, function(err){
+    console.error(err);
+});

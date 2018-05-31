@@ -12,7 +12,8 @@
     "jsonfile": "^4.0.0",
     "lodash": "^4.17.10",
     "node-async-loop": "^1.2.2",
-    "xlsx-stream-reader": "^0.9.11"
+    "xlsx-stream-reader": "^0.9.11",
+    "zlib": "^1.0.5"
   },
   "devDependencies": {},
   "scripts": {
