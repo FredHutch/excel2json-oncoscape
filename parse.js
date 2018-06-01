@@ -1,5 +1,5 @@
 // https://www.npmjs.com/package/csvtojson
-// node --max-old-space-size=3000 trying to mimic lambda specification
+// node --max-old-space-size=7000 trying to mimic lambda specification
 
 const csv=require('csvtojson')
 const asyncLoop = require('node-async-loop');
@@ -45,7 +45,7 @@ var serialization = function(jsonObj, file) {
         ids.splice(0, 1);
         var genes = jsonObj.map(j => j['Gene Symbol']);
         var values = jsonObj.map(dd => {
-            var val = _.values(dd);
+            var val = _.values(dd).map(d=>parseFloat(d));
             val.splice(1, 0);
             return val;
         });
@@ -57,10 +57,11 @@ var serialization = function(jsonObj, file) {
         var keys_uppercase = Object.keys(jsonObj[0]).map(k=>k.toUpperCase());
         var keys = Object.keys(jsonObj[0]);
         var ids = jsonObj.map(j=>j[keys[keys_uppercase.indexOf('PATIENTID')]]);
+        var survival_keys = ['Vital Status', 'Days To Death', 'Days To Last Follow Up'];
         var fields = {};
         keys.splice(keys_uppercase.indexOf('PATIENTID'), 1);
         keys.forEach(k => {
-            if (k.match(regex_n) !== null) {
+            if (k.match(regex_n) !== null || survival_keys.indexOf(k) !== -1) {
                 var col_values = jsonObj.map(j=>parseFloat(j[k]));
                 v = {
                     'min' : _.min(col_values),
@@ -77,7 +78,7 @@ var serialization = function(jsonObj, file) {
         var value = jsonObj.map(j => {
             var arr = [];
             keys.forEach(k => {
-                if (k.match(regex_n) !== null) {
+                if (k.match(regex_n) !== null || survival_keys.indexOf(k) !== -1) {
                     arr.push(parseFloat(j[k]));
                 } else {
                     arr.push(fields[k].indexOf(j[k]));
@@ -211,7 +212,6 @@ fs.readdir(testFolder, (err, files) => {
                             console.error(err);
                         });
                     });
-                    
                 }
                 callback();
             });
@@ -242,6 +242,11 @@ fs.readdir(testFolder, (err, files) => {
                 meta['dataType'] = 'EVENT';
                 meta['file'] = jsonFileName;
                 uploadResults.push(meta);
+                var manifest = serialize.manifest(data, uploadResults);
+                jsonfile.writeFile('manifest.json', manifest, function(err){
+                        console.error(err);
+                        console.log('manifest is saved.');
+                    });
                 zlib.gzip(JSON.stringify(obj), level=9, function(err, result){
                     jsonfile.writeFile(jsonFileName, result, function(err) {
                         console.error(err);
@@ -252,8 +257,3 @@ fs.readdir(testFolder, (err, files) => {
       );
 });
 
-
-var manifest = serialize.manifest(data, uploadResults);
-jsonfile.writeFile('manifest.json', manifest, function(err){
-    console.error(err);
-});
