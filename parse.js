@@ -9,6 +9,7 @@ const zlib = require('zlib');
 const testFolder = '.';
 const fs = require('fs');
 const _ = require('lodash');
+
 var save = require('./data_uploading_modules/DatasetSave.js');
 var serialize = require('./data_uploading_modules/DatasetSerialize.js');
 var ser
@@ -17,6 +18,8 @@ var data = [];
 var events = [];
 var jsonObj;
 var uploadResults = [];
+
+
 console.log(csvFiles);
 var csv2json = function(csvFilePath) {
     return new Promise((resolve, reject) => { 
@@ -45,8 +48,8 @@ var serialization = function(jsonObj, file) {
         ids.splice(0, 1);
         var genes = jsonObj.map(j => j['Gene Symbol']);
         var values = jsonObj.map(dd => {
-            var val = _.values(dd).map(d=>parseFloat(d));
-            val.splice(1, 0);
+            var val = _.values(dd).map(d=>parseFloat(d).toFixed(2));
+            val.splice(0, 1);
             return val;
         });
         res.ids = ids;
@@ -75,7 +78,7 @@ var serialization = function(jsonObj, file) {
             }
             fields[k] = v;
         });
-        var value = jsonObj.map(j => {
+        var values = jsonObj.map(j => {
             var arr = [];
             keys.forEach(k => {
                 if (k.match(regex_n) !== null || survival_keys.indexOf(k) !== -1) {
@@ -88,7 +91,7 @@ var serialization = function(jsonObj, file) {
         });
         res.ids = ids;
         res.fields = fields;
-        res.value = value;
+        res.values = values;
         obj.res = res;
     } else if (type === 'SAMPLE') {
         var keys_uppercase = Object.keys(jsonObj[0]).map(k=>k.toUpperCase());
@@ -112,7 +115,7 @@ var serialization = function(jsonObj, file) {
             }
             fields[k] = v;
         });
-        var value = jsonObj.map(j => {
+        var values = jsonObj.map(j => {
             var arr = [];
             keys.forEach(k => {
                 if (k.match(regex_n) !== null) {
@@ -125,7 +128,7 @@ var serialization = function(jsonObj, file) {
         });
         res.ids = ids;
         res.fields = fields;
-        res.value = value;
+        res.values = values;
         obj.res = res;
     } else if (type === 'EVENT') {
         var map = {};
@@ -145,7 +148,7 @@ var serialization = function(jsonObj, file) {
         var reservedKeyLocations = [patientIDLocation, startDateLocation, endDateLocation];
         var nonreservedKeys = keys.filter((h, i)=>reservedKeyLocations.indexOf(i) === -1);
         
-        var value = jsonObj.map(d=>{
+        var values = jsonObj.map(d=>{
             var arr = [];
             arr[0] = d[keys[patientIDLocation]];
             arr[1] = parseInt(d[keys[startDateLocation]]);
@@ -162,7 +165,7 @@ var serialization = function(jsonObj, file) {
             return arr;
         });
         res.map = map;
-        res.value = value;
+        res.values = values;
         obj.res = res;
     } else if (type === 'MUTATION') {
         var keys_uppercase = Object.keys(jsonObj[0]).map(k=>k.toUpperCase());
@@ -183,6 +186,7 @@ var serialization = function(jsonObj, file) {
     }
     return obj;
 };
+
 fs.readdir(testFolder, (err, files) => {
     csvFiles = files.filter(f => f.indexOf('.csv') > 0);
     async.each(csvFiles,
@@ -207,7 +211,8 @@ fs.readdir(testFolder, (err, files) => {
                     meta['dataType'] = type;
                     meta['file'] = jsonFileName;
                     uploadResults.push(meta);
-                    zlib.gzip(JSON.stringify(result), level=9, function(err, result){
+                    var buf = new Buffer(JSON.stringify(result), 'utf-8');
+                    zlib.gzip(buf, level=9, function(err, result){
                         jsonfile.writeFile(jsonFileName, result, function(err) {
                             console.error(err);
                         });
@@ -229,12 +234,12 @@ fs.readdir(testFolder, (err, files) => {
                 var v = [];
                 events.forEach(e=> {
                     m[e.res.map.subCategory] = e.res.map.category;
-                    v = v.concat(e.res.value);
+                    v = v.concat(e.res.values);
                 });
                 var type_keys = Object.keys(m);
                 v.forEach(elem => elem[1] = type_keys.indexOf(elem[1]));
                 o.map = m;
-                o.value = v;
+                o.values = v;
                 obj.res = o;
                 data.push(obj);
                 var jsonFileName = 'events.json.gz';
@@ -247,7 +252,8 @@ fs.readdir(testFolder, (err, files) => {
                         console.error(err);
                         console.log('manifest is saved.');
                     });
-                zlib.gzip(JSON.stringify(obj), level=9, function(err, result){
+                var buf = new Buffer(JSON.stringify(obj), 'utf-8');
+                zlib.gzip(buf, level=9, function(err, result){
                     jsonfile.writeFile(jsonFileName, result, function(err) {
                         console.error(err);
                     });
