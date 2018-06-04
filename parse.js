@@ -236,7 +236,7 @@ fs.readdir(testFolder, (err, files) => {
                     console.log('*****', file);
                     var jsonFileName = file + '.json.gz';
                     console.log('jsonFileName: ', jsonFileName);
-                    meta['name'] = res.name;
+                    meta['name'] = result.name;
                     meta['dataType'] = type.toLocaleLowerCase();
                     meta['file'] = jsonFileName.replace('.gz','');
                     uploadResults.push(meta);
@@ -301,6 +301,27 @@ fs.readdir(testFolder, (err, files) => {
         }
       );
 });
+
+// var jsonFiles = [];
+// fs.readdir(".", (err, files) => {
+//     jsonFiles = files.filter(f => f.indexOf('.json') > 0);
+// });
+// [ 'Matrix-Gistic-Threshold.json',
+//   'Matrix-Gistic.json',
+//   'Matrix-RNA.json',
+//   'Mutation.json',
+//   'Patient.json',
+//   'Sample.json',
+//   'events.json']
+
+//   const zlib = require('zlib');
+//   var gzip = zlib.createGzip({
+//       level: 9 // maximum compression
+//   }), buffers=[], nread=0;
+  
+//   var r = fs.createReadStream('./events.json');
+//   var w = fs.createWriteStream('./events.json.gz');
+//   r.pipe(gzip).pipe(w);
 
 // region re-populate lgg_mut and gbm_mut
 // const json2csv = require('json2csv').parse;
