@@ -150,7 +150,7 @@ var serialization = function(jsonObj, file) {
         
         var values = jsonObj.map(d=>{
             var arr = [];
-            arr[0] = d[keys[patientIDLocation]];
+            arr[0] = d[keys[patientIDLocation]].replace('TCGA-','');
             arr[1] = parseInt(d[keys[startDateLocation]]);
             arr[2] = parseInt(d[keys[endDateLocation]]);
             var o = {};
@@ -263,3 +263,67 @@ fs.readdir(testFolder, (err, files) => {
       );
 });
 
+// region re-populate lgg_mut and gbm_mut
+// const json2csv = require('json2csv').parse;
+// const jsonfile = require('jsonfile');
+// const mutationType = {
+//     1: 'Missense',
+//     2: 'Silent',
+//     4: 'Frame_Shift_Del',
+//     8: 'Splice_Site',
+//     16: 'Nonsense_Mutation',
+//     32: 'Frame_Shift_Ins',
+//     64: 'RNA',
+//     128: 'In_Frame_Del',
+//     256: 'In_Frame_Ins',
+//     512: 'Nonstop_Mutation',
+//     1024: 'Translation_Start_Site',
+//     2048: 'De_novo_Start_OutOfFrame',
+//     4096: 'De_novo_Start_InFrame',
+//     8192: 'Intron',
+//     16384: '3\'UTR',
+//     32768: 'IGR',
+//     65536: '5\'UTR',
+//     131072: 'Targeted_Region',
+//     262144: 'Read-through',
+//     524288: '5\'Flank',
+//     1048576: '3\'Flank',
+//     2097152: 'Splice_Site_SNP',
+//     4194304: 'Splice_Site_Del',
+//     8388608: 'Splice_Site_Ins',
+//     16777216: 'Indel',
+//     33554432: 'R'
+//  };
+
+// var gbm_mut = require("./tcga_gbm_mut.json")
+// var lgg_mut = require("./tcga_lgg_mut.json")
+
+// var mut_reverse = function(mut){
+//     var arr = [];
+//     var ids = mut.ids;
+//     var genes = mut.genes;
+//     mut.values.forEach(m => {
+//         var obj = {};
+//         var sampleId = 'tcga-' + ids[m.split('-')[1]];
+//         var gene = genes[m.split('-')[0]];
+//         var type = mutationType[m.split('-')[2]];
+//         obj['sampleId'] = sampleId;
+//         obj['gene'] = gene;
+//         obj['type'] = type;
+//         arr.push(obj);
+//     });
+//     return arr;
+// };
+// lgg_mut_rev = mut_reverse(lgg_mut);
+// gbm_mut_rev = mut_reverse(gbm_mut);
+
+// jsonfile.writeFile("gbm_mut_rev.json", gbm_mut_rev, function(err) {
+//     console.error(err);
+// });
+// jsonfile.writeFile("lgg_mut_rev.json", lgg_mut_rev, function(err) {
+//     console.error(err);
+// });
+// json2csv -i lgg_mut_rev.json -o lgg_mut.csv
+// json2csv -i gbm_mut_rev.json -o gbm_mut.csv
+
+// regionend
