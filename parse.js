@@ -39,8 +39,6 @@ var serialization = function(jsonObj, file) {
     var obj = {};
     var res = {};
     var type = file.split('-')[0].toUpperCase();
-    obj.type = type;
-    obj.name = file;
     console.log('type is: ', type);
     var regex_n = new RegExp('\-N');
     var regex_b = new RegExp('\-B');
@@ -57,7 +55,8 @@ var serialization = function(jsonObj, file) {
             val.splice(0, 1);
             return val;
         });
-        obj.name = file.toLocaleLowerCase().replace('matrix-','').replace('-',' ');
+        obj.type = 'matrix';
+        obj.name = file.toLowerCase().replace('matrix-', '').replace('-','_').replace('_',' ');
         res.ids = ids;
         res.genes = genes;
         res.values = values;
@@ -68,7 +67,7 @@ var serialization = function(jsonObj, file) {
         var ids = jsonObj.map(j=>j[keys[keys_uppercase.indexOf('PATIENTID')]]);
         ids = ids.map(id=>id.replace('tcga-', ''));       
         ids = ids.map(id=>id.replace('TCGA-', ''));
-        var survival_keys = ['Vital Status', 'Days To Death', 'Days To Last Follow Up'];
+        var survival_keys = ['vital_status', 'days_to_death', 'days_to_last_follow_up'];
         var fields = {};
         keys.splice(keys_uppercase.indexOf('PATIENTID'), 1);
         keys.forEach(k => {
@@ -78,6 +77,7 @@ var serialization = function(jsonObj, file) {
                     'min' : _.min(col_values),
                     'max' : _.max(col_values)
                 }
+                fields[k] = v;
             } else { //default type is string
                 v = _.uniq(jsonObj.map(j=>j[k]));
                 if(v.indexOf(undefined) > -1) {
@@ -85,8 +85,13 @@ var serialization = function(jsonObj, file) {
                 } else if (v.indexOf('NA') > -1) {
                     v.splice(v.indexOf('NA'), 1);
                 }
+                if (v.length !== 0) {
+                    fields[k] = v;
+                } else {
+                    keys.splice(keys.indexOf(k), 1);
+                }
             }
-            fields[k] = v;
+            
         });
         var values = jsonObj.map(j => {
             var arr = [];
@@ -99,6 +104,8 @@ var serialization = function(jsonObj, file) {
             });
             return arr;
         });
+        obj.type = "clinical";
+        obj.name = "clinical";
         res.ids = ids;
         res.fields = fields;
         res.values = values;
@@ -202,12 +209,12 @@ var serialization = function(jsonObj, file) {
         var genes = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('GENE')]]));
         var mutTypes = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('TYPE')]]));
         var values = jsonObj.map((d)=>{
-            return(ids.indexOf(d[keys[keys_uppercase.indexOf('SAMPLEID')]]) + '-' +
+            return(ids.indexOf(d[keys[keys_uppercase.indexOf('SAMPLEID')]].replace('tcga-', '')) + '-' +
                    genes.indexOf(d[keys[keys_uppercase.indexOf('GENE')]]) + '-' +
                    mutTypes.indexOf(d[keys[keys_uppercase.indexOf('TYPE')]]));
         });
-        res.name = 'mutations';
-        res.type = 'mut';
+        obj.name = 'mutations';
+        obj.type = 'mut';
         res.ids = ids;
         res.genes = genes;
         res.mutationTypes = mutTypes;
@@ -233,17 +240,17 @@ fs.readdir(testFolder, (err, files) => {
                     events.push(result);
                 } else {
                     data.push(result);
-                    console.log('*****', file);
-                    var jsonFileName = file + '.json.gz';
+                    console.log('*****', result.type);
+                    var jsonFileName = 'tcga_brain_' + result.name.replace(' ', '_') + '.json.gz';
                     console.log('jsonFileName: ', jsonFileName);
                     meta['name'] = result.name;
-                    meta['dataType'] = type.toLocaleLowerCase();
+                    meta['dataType'] = result.name.replace(' ', '_');
                     meta['file'] = jsonFileName.replace('.gz','');
                     uploadResults.push(meta);
-                    // jsonfile.writeFile(file + '.json', result.res, function(err){
-                    //     console.error(err);
-                    //     console.log(file + '.json is saved.');
-                    // });
+                    jsonfile.writeFile(meta['file'], result.res, function(err){
+                        console.error(err);
+                        console.log(file + '.json is saved.');
+                    });
                     // var buf = new Buffer(JSON.stringify(result), 'utf-8');
                     // zlib.gzip(buf, level=9, function(err, result){
                     //     jsonfile.writeFile(jsonFileName, result, function(err) {
@@ -260,8 +267,8 @@ fs.readdir(testFolder, (err, files) => {
             } else {
                 var obj = {};
                 var meta = {};
-                obj.type = 'EVENT';
-                obj.name = 'EVENT';
+                obj.type = 'events';
+                obj.name = 'events';
                 var o = {};
                 var m = {};
                 var v = [];
@@ -275,14 +282,14 @@ fs.readdir(testFolder, (err, files) => {
                 o.values = v;
                 obj.res = o;
                 data.push(obj);
-                jsonfile.writeFile('events.json', obj, function(err){
+                jsonfile.writeFile('tcga_brain_events.json.json', obj, function(err){
                     console.error(err);
                     console.log('events.json is saved.');
                 });
-                var jsonFileName = 'events.json.gz';
-                meta['name'] = 'events';
-                meta['dataType'] = 'events';
-                meta['file'] = jsonFileName;
+                var jsonFileName = 'tcga_brain_events.json.gz';
+                meta['name'] = obj.name;
+                meta['dataType'] = obj.name.replace(' ', '_');
+                meta['file'] = jsonFileName.replace('.gz','');
                 uploadResults.push(meta);
 
                 var manifest = serialize.manifest(data, uploadResults);
@@ -302,88 +309,90 @@ fs.readdir(testFolder, (err, files) => {
       );
 });
 
-// var jsonFiles = [];
-// fs.readdir(".", (err, files) => {
-//     jsonFiles = files.filter(f => f.indexOf('.json') > 0);
-// });
-// [ 'Matrix-Gistic-Threshold.json',
-//   'Matrix-Gistic.json',
-//   'Matrix-RNA.json',
-//   'Mutation.json',
-//   'Patient.json',
-//   'Sample.json',
-//   'events.json']
+/* gzip file
 
-//   const zlib = require('zlib');
-//   var gzip = zlib.createGzip({
-//       level: 9 // maximum compression
-//   }), buffers=[], nread=0;
+var jsonFiles = [];
+fs.readdir(".", (err, files) => {
+    jsonFiles = files.filter(f => f.indexOf('tcga_brain_') > 0);
+});
+[ 'tcga_brain_clinical.json',
+  'tcga_brain_events.json',
+  'tcga_brain_gistic.json',
+  'tcga_brain_gistic_threshold.json',
+  'tcga_brain_mutations.json',
+  'tcga_brain_psmap.json',
+  'tcga_brain_rna.json']
+  const zlib = require('zlib');
+  var gzip = zlib.createGzip({
+      level: 9 // maximum compression
+  }), buffers=[], nread=0;
   
-//   var r = fs.createReadStream('./events.json');
-//   var w = fs.createWriteStream('./events.json.gz');
-//   r.pipe(gzip).pipe(w);
+  var r = fs.createReadStream('./tcga_brain_mutations.json');
+  var w = fs.createWriteStream('./tcga_brain_mutations.json.gz');
+  r.pipe(gzip).pipe(w);
+*/
 
-// region re-populate lgg_mut and gbm_mut
-// const json2csv = require('json2csv').parse;
-// const jsonfile = require('jsonfile');
-// const mutationType = {
-//     1: 'Missense',
-//     2: 'Silent',
-//     4: 'Frame_Shift_Del',
-//     8: 'Splice_Site',
-//     16: 'Nonsense_Mutation',
-//     32: 'Frame_Shift_Ins',
-//     64: 'RNA',
-//     128: 'In_Frame_Del',
-//     256: 'In_Frame_Ins',
-//     512: 'Nonstop_Mutation',
-//     1024: 'Translation_Start_Site',
-//     2048: 'De_novo_Start_OutOfFrame',
-//     4096: 'De_novo_Start_InFrame',
-//     8192: 'Intron',
-//     16384: '3\'UTR',
-//     32768: 'IGR',
-//     65536: '5\'UTR',
-//     131072: 'Targeted_Region',
-//     262144: 'Read-through',
-//     524288: '5\'Flank',
-//     1048576: '3\'Flank',
-//     2097152: 'Splice_Site_SNP',
-//     4194304: 'Splice_Site_Del',
-//     8388608: 'Splice_Site_Ins',
-//     16777216: 'Indel',
-//     33554432: 'R'
-//  };
+/* region re-populate lgg_mut and gbm_mut
+const json2csv = require('json2csv').parse;
+const jsonfile = require('jsonfile');
+const mutationType = {
+    1: 'Missense',
+    2: 'Silent',
+    4: 'Frame_Shift_Del',
+    8: 'Splice_Site',
+    16: 'Nonsense_Mutation',
+    32: 'Frame_Shift_Ins',
+    64: 'RNA',
+    128: 'In_Frame_Del',
+    256: 'In_Frame_Ins',
+    512: 'Nonstop_Mutation',
+    1024: 'Translation_Start_Site',
+    2048: 'De_novo_Start_OutOfFrame',
+    4096: 'De_novo_Start_InFrame',
+    8192: 'Intron',
+    16384: '3\'UTR',
+    32768: 'IGR',
+    65536: '5\'UTR',
+    131072: 'Targeted_Region',
+    262144: 'Read-through',
+    524288: '5\'Flank',
+    1048576: '3\'Flank',
+    2097152: 'Splice_Site_SNP',
+    4194304: 'Splice_Site_Del',
+    8388608: 'Splice_Site_Ins',
+    16777216: 'Indel',
+    33554432: 'R'
+ };
 
-// var gbm_mut = require("./tcga_gbm_mut.json")
-// var lgg_mut = require("./tcga_lgg_mut.json")
+var gbm_mut = require("./tcga_gbm_mut.json")
+var lgg_mut = require("./tcga_lgg_mut.json")
 
-// var mut_reverse = function(mut){
-//     var arr = [];
-//     var ids = mut.ids;
-//     var genes = mut.genes;
-//     mut.values.forEach(m => {
-//         var obj = {};
-//         var sampleId = 'tcga-' + ids[m.split('-')[1]];
-//         var gene = genes[m.split('-')[0]];
-//         var type = mutationType[m.split('-')[2]];
-//         obj['sampleId'] = sampleId;
-//         obj['gene'] = gene;
-//         obj['type'] = type;
-//         arr.push(obj);
-//     });
-//     return arr;
-// };
-// lgg_mut_rev = mut_reverse(lgg_mut);
-// gbm_mut_rev = mut_reverse(gbm_mut);
+var mut_reverse = function(mut){
+    var arr = [];
+    var ids = mut.ids;
+    var genes = mut.genes;
+    mut.values.forEach(m => {
+        var obj = {};
+        var sampleId = 'tcga-' + ids[m.split('-')[1]];
+        var gene = genes[m.split('-')[0]];
+        var type = mutationType[m.split('-')[2]];
+        obj['sampleId'] = sampleId;
+        obj['gene'] = gene;
+        obj['type'] = type;
+        arr.push(obj);
+    });
+    return arr;
+};
+lgg_mut_rev = mut_reverse(lgg_mut);
+gbm_mut_rev = mut_reverse(gbm_mut);
 
-// jsonfile.writeFile("gbm_mut_rev.json", gbm_mut_rev, function(err) {
-//     console.error(err);
-// });
-// jsonfile.writeFile("lgg_mut_rev.json", lgg_mut_rev, function(err) {
-//     console.error(err);
-// });
-// json2csv -i lgg_mut_rev.json -o lgg_mut.csv
-// json2csv -i gbm_mut_rev.json -o gbm_mut.csv
+jsonfile.writeFile("gbm_mut_rev.json", gbm_mut_rev, function(err) {
+    console.error(err);
+});
+jsonfile.writeFile("lgg_mut_rev.json", lgg_mut_rev, function(err) {
+    console.error(err);
+});
+json2csv -i lgg_mut_rev.json -o lgg_mut.csv
+json2csv -i gbm_mut_rev.json -o gbm_mut.csv
 
-// regionend
+ regionend */
