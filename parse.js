@@ -67,25 +67,32 @@ var serialization = function(jsonObj, file) {
         var ids = jsonObj.map(j=>j[keys[keys_uppercase.indexOf('PATIENTID')]]);
         ids = ids.map(id=>id.replace('tcga-', ''));       
         ids = ids.map(id=>id.replace('TCGA-', ''));
-        var survival_keys = ['vital_status', 'days_to_death', 'days_to_last_follow_up'];
+        // var survival_keys = ['vital_status', 'days_to_death', 'days_to_last_follow_up'];
         var fields = {};
         keys.splice(keys_uppercase.indexOf('PATIENTID'), 1);
         keys.forEach(k => {
-            if (k.match(regex_n) !== null || survival_keys.indexOf(k) !== -1) {
+            // if (k.match(regex_n) !== null || survival_keys.indexOf(k) !== -1) {
+            if (k.match(regex_n) !== null) {
                 var col_values = jsonObj.map(j=>parseFloat(j[k]));
                 v = {
                     'min' : _.min(col_values),
                     'max' : _.max(col_values)
                 }
-                fields[k] = v;
+                if (v.min == null && v.max == null){
+                    keys.splice(keys.indexOf(k), 1);
+                } else {
+                    fields[k] = v;
+                }
             } else { //default type is string
                 v = _.uniq(jsonObj.map(j=>j[k]));
                 if(v.indexOf(undefined) > -1) {
                     v.splice(v.indexOf(undefined), 1);
                 } else if (v.indexOf('NA') > -1) {
                     v.splice(v.indexOf('NA'), 1);
+                } else if (v.indexOf('') > -1){
+                    v.splice(v.indexOf(''), 1);
                 }
-                if (v.length !== 0) {
+                if (v.length !== 0 ) {
                     fields[k] = v;
                 } else {
                     keys.splice(keys.indexOf(k), 1);
@@ -209,9 +216,9 @@ var serialization = function(jsonObj, file) {
         var genes = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('GENE')]]));
         var mutTypes = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('TYPE')]]));
         var values = jsonObj.map((d)=>{
-            return(ids.indexOf(d[keys[keys_uppercase.indexOf('SAMPLEID')]].replace('tcga-', '')) + '-' +
-                   genes.indexOf(d[keys[keys_uppercase.indexOf('GENE')]]) + '-' +
-                   mutTypes.indexOf(d[keys[keys_uppercase.indexOf('TYPE')]]));
+            return( genes.indexOf(d[keys[keys_uppercase.indexOf('GENE')]]) + '-' +
+                    ids.indexOf(d[keys[keys_uppercase.indexOf('SAMPLEID')]].replace('tcga-', '')) + '-' +
+                    mutTypes.indexOf(d[keys[keys_uppercase.indexOf('TYPE')]]));
         });
         obj.name = 'mutations';
         obj.type = 'mut';
@@ -396,3 +403,37 @@ json2csv -i lgg_mut_rev.json -o lgg_mut.csv
 json2csv -i gbm_mut_rev.json -o gbm_mut.csv
 
  regionend */
+
+/* reverse lgg_clinical.json.gz and gbm_clinical.json.gz to csv
+var lgg_clinical = require('./tcga_lgg_clinical.json');
+var gbm_clinical = require('./tcga_gbm_clinical.json');
+
+var clinical_rev = function(clinical) {
+    var keys = Object.keys(clinical.fields);
+    return clinical['values'].map((d, id) => {
+        var obj = {};
+        obj['patientId'] = clinical.ids[id];
+        keys.forEach((k,i) => { 
+          if(clinical.fields[k].length > 0){
+            obj[k] = clinical.fields[k][d[i]];
+          } else {
+            obj[k] = d[i];
+          }
+        });
+        return obj;
+    });
+};
+
+var lgg_clinical_json = clinical_rev(lgg_clinical);
+var gbm_linical_json = clinical_rev(gbm_clinical);
+jsonfile.writeFile("lgg_clinical_json.json", lgg_clinical_json, function(err) {
+    console.error(err);
+});
+jsonfile.writeFile("gbm_clinical_json.json", gbm_linical_json, function(err) {
+    console.error(err);
+});
+
+json2csv -i gbm_clinical_json.json -o gbm_clinical.csv
+json2csv -i lgg_clinical_json.json -o lgg_clinical.csv
+
+*/
