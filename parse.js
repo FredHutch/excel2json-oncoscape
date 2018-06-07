@@ -18,6 +18,35 @@ var data = [];
 var events = [];
 var jsonObj;
 var uploadResults = [];
+const mutationType = {
+    1: 'Missense',
+    2: 'Silent',
+    4: 'Frame_Shift_Del',
+    8: 'Splice_Site',
+    16: 'Nonsense_Mutation',
+    32: 'Frame_Shift_Ins',
+    64: 'RNA',
+    128: 'In_Frame_Del',
+    256: 'In_Frame_Ins',
+    512: 'Nonstop_Mutation',
+    1024: 'Translation_Start_Site',
+    2048: 'De_novo_Start_OutOfFrame',
+    4096: 'De_novo_Start_InFrame',
+    8192: 'Intron',
+    16384: '3\'UTR',
+    32768: 'IGR',
+    65536: '5\'UTR',
+    131072: 'Targeted_Region',
+    262144: 'Read-through',
+    524288: '5\'Flank',
+    1048576: '3\'Flank',
+    2097152: 'Splice_Site_SNP',
+    4194304: 'Splice_Site_Del',
+    8388608: 'Splice_Site_Ins',
+    16777216: 'Indel',
+    33554432: 'R'
+ };
+
 
 var gzip = zlib.createGzip({
     level: 9 // maximum compression
@@ -57,6 +86,7 @@ var serialization = function(jsonObj, file) {
         });
         obj.type = 'matrix';
         obj.name = file.toLowerCase().replace('matrix-', '').replace('-','_').replace('_',' ');
+        obj.dataType = obj.name.replace(' ', '_');
         res.ids = ids;
         res.genes = genes;
         res.values = values;
@@ -81,7 +111,7 @@ var serialization = function(jsonObj, file) {
                 if (v.min == null && v.max == null){
                     keys.splice(keys.indexOf(k), 1);
                 } else {
-                    fields[k] = v;
+                    fields[k.replace('-N', '')] = v;
                 }
             } else { //default type is string
                 v = _.uniq(jsonObj.map(j=>j[k]));
@@ -103,7 +133,8 @@ var serialization = function(jsonObj, file) {
         var values = jsonObj.map(j => {
             var arr = [];
             keys.forEach(k => {
-                if (k.match(regex_n) !== null || survival_keys.indexOf(k) !== -1) {
+                // if (k.match(regex_n) !== null || survival_keys.indexOf(k) !== -1) {
+                if (k.match(regex_n) !== null) {
                     arr.push(parseFloat(j[k]));
                 } else {
                     arr.push(fields[k].indexOf(j[k]));
@@ -111,8 +142,9 @@ var serialization = function(jsonObj, file) {
             });
             return arr;
         });
-        obj.type = "clinical";
-        obj.name = "clinical";
+        obj.type = 'clinical';
+        obj.name = 'clinical';
+        obj.dataType = obj.name.replace(' ', '_');
         res.ids = ids;
         res.fields = fields;
         res.values = values;
@@ -169,6 +201,7 @@ var serialization = function(jsonObj, file) {
         // res.values = values;
         obj.name = 'psmap';
         obj.type = 'psmap';
+        obj.dataType = obj.name.replace(' ', '_');
         obj.res = res;
     } else if (type === 'EVENT') {
         var map = {};
@@ -191,17 +224,18 @@ var serialization = function(jsonObj, file) {
         var values = jsonObj.map(d=>{
             var arr = [];
             arr[0] = d[keys[patientIDLocation]].replace('tcga-', '');
-            arr[1] = parseInt(d[keys[startDateLocation]]);
-            arr[2] = parseInt(d[keys[endDateLocation]]);
+            arr[1] = 0;
+            arr[2] = parseInt(d[keys[startDateLocation]]);
+            arr[3] = parseInt(d[keys[endDateLocation]]);
             var o = {};
             nonreservedKeys.forEach(h=>{
                 if( h.match(regex_n) !== null) {
-                    o[h] = parseFloat(d[h]);
+                    o[h.replace('-N', '')] = parseFloat(d[h]);
                 } else {
                     o[h] = d[h];
                 } 
             });
-            arr[3] = o;
+            arr[4] = o;
             return arr;
         });
         res.map = map;
@@ -214,17 +248,20 @@ var serialization = function(jsonObj, file) {
         ids = ids.map(id=>id.replace('tcga-', ''));         
         ids = ids.map(id=>id.replace('TCGA-', ''));
         var genes = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('GENE')]]));
-        var mutTypes = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('TYPE')]]));
+        // var mutTypes = _.uniq(jsonObj.map(j => j[keys[keys_uppercase.indexOf('TYPE')]]));
         var values = jsonObj.map((d)=>{
+            var mut = d[keys[keys_uppercase.indexOf('TYPE')]];
+            var m = mut.split('|').map(s => _.values(mutationType).indexOf(s)).reduce((a,b)=> a=a+b);
             return( genes.indexOf(d[keys[keys_uppercase.indexOf('GENE')]]) + '-' +
                     ids.indexOf(d[keys[keys_uppercase.indexOf('SAMPLEID')]].replace('tcga-', '')) + '-' +
-                    mutTypes.indexOf(d[keys[keys_uppercase.indexOf('TYPE')]]));
+                    m);
         });
         obj.name = 'mutations';
         obj.type = 'mut';
+        obj.dataType = 'mut';
         res.ids = ids;
         res.genes = genes;
-        res.mutationTypes = mutTypes;
+        res.mutationTypes = mutationType;
         res.values = values;
         obj.res = res;
     }
@@ -248,10 +285,10 @@ fs.readdir(testFolder, (err, files) => {
                 } else {
                     data.push(result);
                     console.log('*****', result.type);
-                    var jsonFileName = 'tcga_brain_' + result.name.replace(' ', '_') + '.json.gz';
+                    var jsonFileName = 'tcga_brain_' + result.dataType + '.json.gz';
                     console.log('jsonFileName: ', jsonFileName);
                     meta['name'] = result.name;
-                    meta['dataType'] = result.name.replace(' ', '_');
+                    meta['dataType'] = result.dataType;
                     meta['file'] = jsonFileName.replace('.gz','');
                     uploadResults.push(meta);
                     jsonfile.writeFile(meta['file'], result.res, function(err){
@@ -276,26 +313,36 @@ fs.readdir(testFolder, (err, files) => {
                 var meta = {};
                 obj.type = 'events';
                 obj.name = 'events';
+                obj.dataType = 'events';
                 var o = {};
                 var m = {};
                 var v = [];
-                events.forEach(e=> {
+                events.forEach(e => {
                     m[e.res.map.subCategory] = e.res.map.category;
-                    v = v.concat(e.res.values);
                 });
-                var type_keys = Object.keys(m);
-                v.forEach(elem => elem[1] = type_keys.indexOf(elem[1]));
+                events.forEach(e => {
+                    var index = Object.keys(m).indexOf(e.res.map.subCategory);
+                    console.log(index);
+                    var vals = e.res.values.map(r => {
+                                    var obj = r;
+                                    obj[1] = index;
+                                    return obj
+                                });
+                    v = v.concat(vals);
+                });
+                // var type_keys = Object.keys(m);
+                // v.forEach(elem => elem[1] = type_keys.indexOf(elem[1]));
                 o.map = m;
-                o.values = v;
+                o.data = v;
                 obj.res = o;
                 data.push(obj);
-                jsonfile.writeFile('tcga_brain_events.json.json', obj, function(err){
+                jsonfile.writeFile('tcga_brain_events.json', obj.res, function(err){
                     console.error(err);
                     console.log('events.json is saved.');
                 });
                 var jsonFileName = 'tcga_brain_events.json.gz';
                 meta['name'] = obj.name;
-                meta['dataType'] = obj.name.replace(' ', '_');
+                meta['dataType'] = obj.dataType;
                 meta['file'] = jsonFileName.replace('.gz','');
                 uploadResults.push(meta);
 
@@ -326,7 +373,7 @@ fs.readdir(".", (err, files) => {
   'tcga_brain_events.json',
   'tcga_brain_gistic.json',
   'tcga_brain_gistic_threshold.json',
-  'tcga_brain_mutations.json',
+  'tcga_brain_mut.json',
   'tcga_brain_psmap.json',
   'tcga_brain_rna.json']
   const zlib = require('zlib');
@@ -334,8 +381,8 @@ fs.readdir(".", (err, files) => {
       level: 9 // maximum compression
   }), buffers=[], nread=0;
   
-  var r = fs.createReadStream('./tcga_brain_mutations.json');
-  var w = fs.createWriteStream('./tcga_brain_mutations.json.gz');
+  var r = fs.createReadStream('./tcga_brain_rna.json');
+  var w = fs.createWriteStream('./tcga_brain_rna.json.gz');
   r.pipe(gzip).pipe(w);
 */
 
@@ -374,6 +421,29 @@ const mutationType = {
 var gbm_mut = require("./tcga_gbm_mut.json")
 var lgg_mut = require("./tcga_lgg_mut.json")
 
+// var mut_type_bitwise = Object.keys(mutationType)
+//                              .forEach(s=>{
+//                                  console.log(parseInt(s).toString(2))
+//                                 });
+
+var mut_type = function(str) {
+    var mut_types = '';
+    var newStr = parseInt(str).toString(2);
+    for(i = 0; i<newStr.length; i++){
+        // console.log(newStr.charAt(i));
+        if(newStr.charAt(i) == '1'){
+            // console.log(mut_types);
+            if(mut_types !== ''){
+                mut_types = mut_types + '|' + mutationType[Object.keys(mutationType)[i]];
+            } else {
+                mut_types = mutationType[Object.keys(mutationType)[i]];
+            }
+            
+        } 
+    }
+    return mut_types;
+}
+
 var mut_reverse = function(mut){
     var arr = [];
     var ids = mut.ids;
@@ -382,7 +452,7 @@ var mut_reverse = function(mut){
         var obj = {};
         var sampleId = 'tcga-' + ids[m.split('-')[1]];
         var gene = genes[m.split('-')[0]];
-        var type = mutationType[m.split('-')[2]];
+        var type = mut_type([m.split('-')[2]]);
         obj['sampleId'] = sampleId;
         obj['gene'] = gene;
         obj['type'] = type;
@@ -405,6 +475,7 @@ json2csv -i gbm_mut_rev.json -o gbm_mut.csv
  regionend */
 
 /* reverse lgg_clinical.json.gz and gbm_clinical.json.gz to csv
+const jsonfile = require('jsonfile');
 var lgg_clinical = require('./tcga_lgg_clinical.json');
 var gbm_clinical = require('./tcga_gbm_clinical.json');
 
@@ -412,7 +483,7 @@ var clinical_rev = function(clinical) {
     var keys = Object.keys(clinical.fields);
     return clinical['values'].map((d, id) => {
         var obj = {};
-        obj['patientId'] = clinical.ids[id];
+        obj['patientId'] = 'tcga-' + clinical.ids[id];
         keys.forEach((k,i) => { 
           if(clinical.fields[k].length > 0){
             obj[k] = clinical.fields[k][d[i]];
@@ -437,3 +508,7 @@ json2csv -i gbm_clinical_json.json -o gbm_clinical.csv
 json2csv -i lgg_clinical_json.json -o lgg_clinical.csv
 
 */
+
+var arr_overlap = function(arr1, arr2) {
+    
+};
