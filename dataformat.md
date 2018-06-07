@@ -1,43 +1,62 @@
 # Rules for Input dataset
 
-- General rules:
-    - Column names for the clinical field 
-    - If the clinical-related column names have postfix indicating the data format (i.e. '-DATE', '-STRING', '-NUMBER', '-BOOLEAN'), the values will be parsed accordingly. If datatype is not specified from the column name, the value will be auto-interpreted by the code. 
+## General rules:
+
+#### Column names and data types
+- For Clinical-related tables (PATIENT, PATIENT EVENT etc.), the dafault data type is **string**. User can append postfix to specify other data types to ensure the downstream calculation. 
+    - '-N' as numerica values
+    - '-S' as string
+    - '-D' as date
+    - '-B' as boolean
+- The default data type for molecular data in matrix format is **numeric**. User can append postfix to specify other data types to ensure the downstream calculation. 
+
+#### Sheet naming convention
+
+- Clinical EVENT naming convention
+    - sheet name is used to determine the 'sheet_type', 'event_category', 'event_subcategory'. The delimiter is “-“.
+    - one example: EVENT-TREATMENT-RADIATION. 
+- Molecular MATRIX naming convention
     - Sheet name is used to determine the 'sheet_type', 'data_type', 'dataset_name'. The delimiter is “-“.
-        - sheet_type could be [“PATIENT”, “PATIENTEVENT”, “SAMPLE”, “MATRIX”]
-            - i.e. PATIENTEVENT-RADIATION
-        - data_type could be [“EXPR”, “CNV”, “CNV_THD”, “MUT01”, "MUT", "METH", "METH_THD"]
-            - [“EXPR”, “CNV”, “CNV_THD”, “MUT01”] are interpreted as float number 
-            - "MUT" is interpreted as strings. 
-            - “METH”, “METH_THD” are accepted, however the values need to be rolled up to gene-level and fit into the Molecular sheet format. Please be mindful of the size since so far oncoscape uploading tool only accept excel format. 
-        - data_name is unique identifier defined by users. 
-        - Here are some sample sheet names: "PATIENT", "SAMPLE", "PATIENTEVENT-RADIATION`", "MATRIX-CNV-CNA", "MATRIX-CNV-log2CNA", and "MATRIX-EXPR-median". 
+    - data_type could be [“RNA”, “GISTIC”, “GISTIC_THRESHOLD”, "MUT", “METH”, “METH_THD”]
+        - [“RNA”, “GISTIC”, “GISTIC_THRESHOLD”] are interpreted as float number 
+        - "MUT" is interpreted as strings. 
+        - “METH”, “METH_THD” are accepted, however the values need to be rolled up to gene-level and fit into the Molecular sheet format. Please be mindful of the size since so far oncoscape uploading tool only accept excel format. 
+    - data_name is unique identifier defined by users. 
+    - one example: MATRIX-EXPR-Agilent
         
-- PATIENT [required]
-    - Each row is one unique patient record. 
-    - First column must be patient ID. The exact column name can be defined by users. 
+## PATIENT [required]
 
-- PATIENT EVENT 
-    - Each row is one unique patient event record. 
-    - First column is patient ID
-    - Second column must be event start date. 
-    - Third column must be event end date. 
-    - Fourth column must be event type.
-    - Fifth column must be event subtype. Subtype values should be unique across the entire dataset and each subtype should match to only one type. 
+- Each row is one unique patient record. 
+- There must be a column named "patientId", representing patient identifier. 
 
-- SAMPLE [Required] to create sample-mapping 
-    - Each row is one unique sample record
-    - First column should be sampleID. The exact column name can be defined by users. 
-    - Second column must be patientID. The exact column name can be defined by users.
+## PATIENT EVENT 
 
-- MATRIX-MOLECULAR
-    - General rules:
-        - Column names are sample names
-        - Row names are marker names
-        - [0,0] defines 'marker_type' and 'subject_type'
-            - 'marker_type' could be 'Hugo', 'Entrez', etc...
-            - 'subject_type' could be 'Sample', 'Patient', etc...
-            - I.e. “Hugo_patient” “Hugo_sample”, “Entrez_sample”, “Protein_object” so far all sample-specific. Potentially can be expanded to patient-level data. 
+- Each row is one unique patient event record. 
+- There must be a column named "patientId", which represents patient identification.
+- There must be a column named "start", which represents event start date. 
+- There must be a column named "end", which represents event end date. 
+
+## SAMPLE [Required] to create sample-mapping 
+
+- Each row is one unique sample record
+- There must be a column named "sampleId", which represents sample identification. 
+- There must be a column named "patientId", which represents patient identification.
+
+## MATRIX-MOLECULAR
+
+- General rules:
+    - Column names are sample names
+    - Row names are marker names
+
+## MUTATION
+
+- General rules:
+    - There must be a column named "sampleId", which represents sample identification.
+    - There must be a column named "gene", which represents gene name.
+    - There must be a column named "type", which represents the gene mutation type. 
+
+
+
 
 
 
